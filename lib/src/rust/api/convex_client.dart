@@ -5,9 +5,11 @@
 
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 import 'subscription.dart';
+part 'convex_client.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `convex_value_to_json`, `convex_value_to_serde_json`
+// These functions are ignored because they are not marked as `pub`: `convert_value`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ConvexClientWrapper>>
@@ -49,10 +51,18 @@ class ConvexError implements FrbException {
           message == other.message;
 }
 
-class ConvexValue {
-  final String inner;
+@freezed
+sealed class ConvexValue with _$ConvexValue {
+  const ConvexValue._();
 
-  const ConvexValue({required this.inner});
+  const factory ConvexValue.null_() = ConvexValue_Null;
+  const factory ConvexValue.string(String field0) = ConvexValue_String;
+  const factory ConvexValue.int64(PlatformInt64 field0) = ConvexValue_Int64;
+  const factory ConvexValue.float64(double field0) = ConvexValue_Float64;
+  const factory ConvexValue.array(List<ConvexValue> field0) = ConvexValue_Array;
+  const factory ConvexValue.object(Map<String, ConvexValue> field0) =
+      ConvexValue_Object;
+  const factory ConvexValue.bytes(Uint8List field0) = ConvexValue_Bytes;
 
   static ConvexValue fromBool({required bool value}) => RustLib.instance.api
       .crateApiConvexClientConvexValueFromBool(value: value);
@@ -66,16 +76,9 @@ class ConvexValue {
   static ConvexValue fromString({required String value}) => RustLib.instance.api
       .crateApiConvexClientConvexValueFromString(value: value);
 
-  static ConvexValue null_() =>
-      RustLib.instance.api.crateApiConvexClientConvexValueNull();
+  static ConvexValue nullValue() =>
+      RustLib.instance.api.crateApiConvexClientConvexValueNullValue();
 
-  @override
-  int get hashCode => inner.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConvexValue &&
-          runtimeType == other.runtimeType &&
-          inner == other.inner;
+  Future<String> toJsonString() => RustLib.instance.api
+      .crateApiConvexClientConvexValueToJsonString(that: this);
 }

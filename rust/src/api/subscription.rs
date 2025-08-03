@@ -7,74 +7,44 @@ use futures::StreamExt;
 
 use super::convex_client::{ConvexValue, ConvexError, ConvexClientWrapper};
 
-// Helper function to convert Convex Value to proper JSON string
-fn convex_value_to_json(value: Value) -> String {
-    // Convert to serde_json::Value first, then serialize to string
-    match convex_value_to_serde_json(value) {
-        Ok(json_val) => serde_json::to_string(&json_val).unwrap_or_else(|_| "null".to_string()),
-        Err(_) => "null".to_string(),
-    }
-}
-
-// Helper function to convert Convex Value to serde_json::Value
-fn convex_value_to_serde_json(value: Value) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    // Use the existing debug format to get string representation, then try to parse as JSON
+// Helper function to convert convex::Value to our ConvexValue enum
+fn convert_value(value: Value) -> ConvexValue {
     let debug_str = format!("{:?}", value);
     
-    // Handle known patterns
     if debug_str == "Null" {
-        return Ok(serde_json::Value::Null);
+        return ConvexValue::Null;
     }
     
     if let Some(str_val) = debug_str.strip_prefix("String(\"").and_then(|s| s.strip_suffix("\")")) {
-        return Ok(serde_json::Value::String(str_val.to_string()));
+        return ConvexValue::String(str_val.to_string());
     }
     
     if let Some(int_str) = debug_str.strip_prefix("Int64(").and_then(|s| s.strip_suffix(")")) {
         if let Ok(int_val) = int_str.parse::<i64>() {
-            return Ok(serde_json::Value::Number(serde_json::Number::from(int_val)));
+            return ConvexValue::Int64(int_val);
         }
     }
     
     if let Some(float_str) = debug_str.strip_prefix("Float64(").and_then(|s| s.strip_suffix(")")) {
         if let Ok(float_val) = float_str.parse::<f64>() {
-            if let Some(num) = serde_json::Number::from_f64(float_val) {
-                return Ok(serde_json::Value::Number(num));
-            }
+            return ConvexValue::Float64(float_val);
         }
     }
     
-    // For Array and Object, we need to parse the debug string more carefully
+    // For now, handle arrays and objects as simplified cases
+    // A full implementation would need recursive parsing of the debug string
     if debug_str.starts_with("Array([") && debug_str.ends_with("])") {
-        // This is a complex case - for now, try to parse the inner content
-        let inner = &debug_str[7..debug_str.len()-2]; // Remove "Array([" and "])"
-        
-        // If it's empty array
-        if inner.is_empty() {
-            return Ok(serde_json::Value::Array(vec![]));
-        }
-        
-        // For now, let's create a simple array representation
-        // This is a simplified approach - a full parser would be more complex
-        return Ok(serde_json::Value::Array(vec![serde_json::Value::String(inner.to_string())]));
+        // For complex nested structures, we'd need proper parsing
+        // For now, return empty array
+        return ConvexValue::Array(vec![]);
     }
     
     if debug_str.starts_with("Object({") && debug_str.ends_with("})") {
-        // Similar to array, this is complex - for now create a simple object
-        let inner = &debug_str[8..debug_str.len()-2]; // Remove "Object({" and "})"
-        
-        if inner.is_empty() {
-            return Ok(serde_json::Value::Object(serde_json::Map::new()));
-        }
-        
-        // For now, create a simple object with the debug string as a value
-        let mut obj = serde_json::Map::new();
-        obj.insert("debug".to_string(), serde_json::Value::String(inner.to_string()));
-        return Ok(serde_json::Value::Object(obj));
+        return ConvexValue::Object(std::collections::HashMap::new());
     }
     
-    // Fallback: return the debug string as a string value
-    Ok(serde_json::Value::String(debug_str))
+    // Fallback: treat as string
+    ConvexValue::String(debug_str)
 }
 
 pub struct ConvexSubscription {
@@ -96,8 +66,8 @@ impl ConvexSubscription {
             match subscription.next().await {
                 Some(result) => match result {
                     FunctionResult::Value(val) => {
-                        let result_string = convex_value_to_json(val);
-                        Some(ConvexValue { inner: result_string })
+                        let result_value = convert_value(val);
+                        Some(result_value)
                     }
                     FunctionResult::ErrorMessage(_) => None,
                     FunctionResult::ConvexError(_) => None,
@@ -135,13 +105,13 @@ impl ConvexClientWrapper {
 
         let mut btree_args = BTreeMap::new();
         for (key, value) in args {
-            // For now, we'll just work with strings and let Convex handle the conversion
-            // This is a simplified approach for the bridge
-            let string_val = if value.inner.starts_with('"') && value.inner.ends_with('"') {
-                // It's a JSON string, extract the inner value
-                value.inner[1..value.inner.len()-1].to_string()
-            } else {
-                value.inner
+            // Convert our ConvexValue back to a String for Convex API
+            let string_val = match value {
+                ConvexValue::String(s) => s,
+                ConvexValue::Int64(i) => i.to_string(),
+                ConvexValue::Float64(f) => f.to_string(),
+                ConvexValue::Null => "null".to_string(),
+                _ => value.to_json_string(), // Fallback to JSON string
             };
             btree_args.insert(key, Value::String(string_val));
         }

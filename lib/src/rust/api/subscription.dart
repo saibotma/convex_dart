@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 import 'convex_client.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `convex_value_to_json`, `convex_value_to_serde_json`, `create_internal`
+// These functions are ignored because they are not marked as `pub`: `convert_value`, `create_internal`
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ConvexSubscription>>
 abstract class ConvexSubscription implements RustOpaqueInterface {

@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -712791720;
+  int get rustContentHash => 1465306708;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -127,7 +127,11 @@ abstract class RustLibApi extends BaseApi {
     required String value,
   });
 
-  ConvexValue crateApiConvexClientConvexValueNull();
+  ConvexValue crateApiConvexClientConvexValueNullValue();
+
+  Future<String> crateApiConvexClientConvexValueToJsonString({
+    required ConvexValue that,
+  });
 
   String crateApiSimpleGreet({required String name});
 
@@ -523,7 +527,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  ConvexValue crateApiConvexClientConvexValueNull() {
+  ConvexValue crateApiConvexClientConvexValueNullValue() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -534,15 +538,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_convex_value,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiConvexClientConvexValueNullConstMeta,
+        constMeta: kCrateApiConvexClientConvexValueNullValueConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiConvexClientConvexValueNullConstMeta =>
-      const TaskConstMeta(debugName: "convex_value_null", argNames: []);
+  TaskConstMeta get kCrateApiConvexClientConvexValueNullValueConstMeta =>
+      const TaskConstMeta(debugName: "convex_value_null_value", argNames: []);
+
+  @override
+  Future<String> crateApiConvexClientConvexValueToJsonString({
+    required ConvexValue that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_convex_value(that, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiConvexClientConvexValueToJsonStringConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiConvexClientConvexValueToJsonStringConstMeta =>
+      const TaskConstMeta(
+        debugName: "convex_value_to_json_string",
+        argNames: ["that"],
+      );
 
   @override
   String crateApiSimpleGreet({required String name}) {
@@ -551,7 +588,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -576,7 +613,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 15,
             port: port_,
           );
         },
@@ -603,7 +640,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 16,
             port: port_,
           );
         },
@@ -674,6 +711,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Map<String, ConvexValue> dco_decode_Map_String_convex_value_None(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Map.fromEntries(
+      dco_decode_list_record_string_convex_value(
+        raw,
+      ).map((e) => MapEntry(e.$1, e.$2)),
+    );
+  }
+
+  @protected
   ConvexClientWrapper
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConvexClientWrapper(
     dynamic raw,
@@ -721,10 +770,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   ConvexValue dco_decode_convex_value(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 1)
-      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
-    return ConvexValue(inner: dco_decode_String(arr[0]));
+    switch (raw[0]) {
+      case 0:
+        return ConvexValue_Null();
+      case 1:
+        return ConvexValue_String(dco_decode_String(raw[1]));
+      case 2:
+        return ConvexValue_Int64(dco_decode_i_64(raw[1]));
+      case 3:
+        return ConvexValue_Float64(dco_decode_f_64(raw[1]));
+      case 4:
+        return ConvexValue_Array(dco_decode_list_convex_value(raw[1]));
+      case 5:
+        return ConvexValue_Object(
+          dco_decode_Map_String_convex_value_None(raw[1]),
+        );
+      case 6:
+        return ConvexValue_Bytes(dco_decode_list_prim_u_8_strict(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -737,6 +802,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 dco_decode_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeI64(raw);
+  }
+
+  @protected
+  List<ConvexValue> dco_decode_list_convex_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_convex_value).toList();
   }
 
   @protected
@@ -838,6 +909,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Map<String, ConvexValue> sse_decode_Map_String_convex_value_None(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_record_string_convex_value(deserializer);
+    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
   ConvexClientWrapper
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConvexClientWrapper(
     SseDeserializer deserializer,
@@ -892,8 +972,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   ConvexValue sse_decode_convex_value(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_inner = sse_decode_String(deserializer);
-    return ConvexValue(inner: var_inner);
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        return ConvexValue_Null();
+      case 1:
+        var var_field0 = sse_decode_String(deserializer);
+        return ConvexValue_String(var_field0);
+      case 2:
+        var var_field0 = sse_decode_i_64(deserializer);
+        return ConvexValue_Int64(var_field0);
+      case 3:
+        var var_field0 = sse_decode_f_64(deserializer);
+        return ConvexValue_Float64(var_field0);
+      case 4:
+        var var_field0 = sse_decode_list_convex_value(deserializer);
+        return ConvexValue_Array(var_field0);
+      case 5:
+        var var_field0 = sse_decode_Map_String_convex_value_None(deserializer);
+        return ConvexValue_Object(var_field0);
+      case 6:
+        var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
+        return ConvexValue_Bytes(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -906,6 +1010,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  List<ConvexValue> sse_decode_list_convex_value(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ConvexValue>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_convex_value(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -1028,6 +1144,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_Map_String_convex_value_None(
+    Map<String, ConvexValue> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_record_string_convex_value(
+      self.entries.map((e) => (e.key, e.value)).toList(),
+      serializer,
+    );
+  }
+
+  @protected
   void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConvexClientWrapper(
     ConvexClientWrapper self,
@@ -1083,7 +1211,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_convex_value(ConvexValue self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.inner, serializer);
+    switch (self) {
+      case ConvexValue_Null():
+        sse_encode_i_32(0, serializer);
+      case ConvexValue_String(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(field0, serializer);
+      case ConvexValue_Int64(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_i_64(field0, serializer);
+      case ConvexValue_Float64(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_f_64(field0, serializer);
+      case ConvexValue_Array(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_list_convex_value(field0, serializer);
+      case ConvexValue_Object(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_Map_String_convex_value_None(field0, serializer);
+      case ConvexValue_Bytes(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_list_prim_u_8_strict(field0, serializer);
+    }
   }
 
   @protected
@@ -1096,6 +1245,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_list_convex_value(
+    List<ConvexValue> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_convex_value(item, serializer);
+    }
   }
 
   @protected

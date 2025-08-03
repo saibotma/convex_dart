@@ -9,7 +9,6 @@ import 'rust/frb_generated.dart';
 class ConvexClient {
   rust.ConvexClientWrapper? _client;
   bool _isConnected = false;
-  static bool _isRustLibInitialized = false;
   static Completer<void>? _initCompleter;
 
   ConvexClient._();
@@ -31,12 +30,10 @@ class ConvexClient {
       // First caller does the initialization
       try {
         await RustLib.init();
-        ConvexClient._isRustLibInitialized = true;
         ConvexClient._initCompleter!.complete();
       } catch (e) {
         // Handle case where RustLib was already initialized by external code
         if (e.toString().contains('Should not initialize flutter_rust_bridge twice')) {
-          ConvexClient._isRustLibInitialized = true;
           if (!ConvexClient._initCompleter!.isCompleted) {
             ConvexClient._initCompleter!.complete();
           }
@@ -158,26 +155,46 @@ class ConvexClient {
 
   rust.ConvexValue _dartValueToConvexValue(dynamic value) {
     if (value == null) {
-      return rust.ConvexValue.null_();
+      return const rust.ConvexValue.null_();
     } else if (value is String) {
-      return rust.ConvexValue.fromString(value: value);
+      return rust.ConvexValue.string(value);
     } else if (value is int) {
-      return rust.ConvexValue.fromInt(value: value);
+      return rust.ConvexValue.int64(value);
     } else if (value is double) {
-      return rust.ConvexValue.fromDouble(value: value);
+      return rust.ConvexValue.float64(value);
     } else if (value is bool) {
-      return rust.ConvexValue.fromBool(value: value);
+      return rust.ConvexValue.string(value.toString());
+    } else if (value is List) {
+      final convexList = value.map((item) => _dartValueToConvexValue(item)).toList();
+      return rust.ConvexValue.array(convexList);
+    } else if (value is Map<String, dynamic>) {
+      final convexMap = <String, rust.ConvexValue>{};
+      for (final entry in value.entries) {
+        convexMap[entry.key] = _dartValueToConvexValue(entry.value);
+      }
+      return rust.ConvexValue.object(convexMap);
     } else {
-      // For complex types, serialize to JSON string
+      // For other types, serialize to JSON string
       final jsonString = jsonEncode(value);
-      return rust.ConvexValue(inner: jsonString);
+      return rust.ConvexValue.string(jsonString);
     }
   }
 
   T _parseResult<T>(rust.ConvexValue result) {
-    final jsonString = result.inner;
-    final parsed = jsonDecode(jsonString);
+    final dynamic parsed = _convexValueToDart(result);
     return parsed as T;
+  }
+
+  dynamic _convexValueToDart(rust.ConvexValue value) {
+    return value.when(
+      null_: () => null,
+      string: (str) => str,
+      int64: (intVal) => intVal,
+      float64: (floatVal) => floatVal,
+      array: (list) => list.map((item) => _convexValueToDart(item)).toList(),
+      object: (map) => map.map((key, value) => MapEntry(key, _convexValueToDart(value))),
+      bytes: (bytes) => bytes,
+    );
   }
 }
 
