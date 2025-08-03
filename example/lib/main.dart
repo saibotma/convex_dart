@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:convex_dart/convex_dart.dart';
 
-void main() async {
-  // Initialize the Rust library
-  await RustLib.init();
+void main() {
   runApp(const MyApp());
 }
 

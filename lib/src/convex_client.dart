@@ -3,11 +3,14 @@ import 'dart:convert';
 
 import 'rust/api/convex_client.dart' as rust;
 import 'rust/api/subscription.dart' as rust_sub;
+import 'rust/frb_generated.dart';
 
 /// A Dart-idiomatic wrapper for the Convex client.
 class ConvexClient {
   final rust.ConvexClientWrapper _client;
   bool _isConnected = false;
+  static bool _isRustLibInitialized = false;
+  static Completer<void>? _initCompleter;
 
   ConvexClient._() : _client = rust.ConvexClientWrapper();
 
@@ -16,8 +19,43 @@ class ConvexClient {
     return ConvexClient._();
   }
 
+  /// Ensures RustLib is initialized before any operations
+  static Future<void> _ensureInitialized() async {
+    if (_isRustLibInitialized) {
+      return;
+    }
+
+    _initCompleter ??= Completer<void>();
+
+    if (!_initCompleter!.isCompleted) {
+      // First caller does the initialization
+      try {
+        await RustLib.init();
+        _isRustLibInitialized = true;
+        _initCompleter!.complete();
+      } catch (e) {
+        // Handle case where RustLib was already initialized by external code
+        if (e.toString().contains('Should not initialize flutter_rust_bridge twice')) {
+          _isRustLibInitialized = true;
+          if (!_initCompleter!.isCompleted) {
+            _initCompleter!.complete();
+          }
+        } else {
+          if (!_initCompleter!.isCompleted) {
+            _initCompleter!.completeError(e);
+          }
+          rethrow;
+        }
+      }
+    }
+
+    // Wait for initialization to complete (for concurrent callers)
+    await _initCompleter!.future;
+  }
+
   /// Connects to a Convex deployment.
   Future<void> connect(String deploymentUrl) async {
+    await _ensureInitialized();
     try {
       await _client.connect(deploymentUrl: deploymentUrl);
       _isConnected = true;
@@ -31,6 +69,7 @@ class ConvexClient {
 
   /// Performs a mutation on the Convex backend.
   Future<T> mutation<T>(String functionName, [Map<String, dynamic>? args]) async {
+    await _ensureInitialized();
     if (!_isConnected) {
       throw ConvexException('Client not connected. Call connect() first.');
     }
@@ -50,6 +89,7 @@ class ConvexClient {
 
   /// Performs a query on the Convex backend.
   Future<T> query<T>(String functionName, [Map<String, dynamic>? args]) async {
+    await _ensureInitialized();
     if (!_isConnected) {
       throw ConvexException('Client not connected. Call connect() first.');
     }
@@ -69,6 +109,7 @@ class ConvexClient {
 
   /// Creates a subscription to a query that returns a stream of results.
   Stream<T> subscribe<T>(String functionName, [Map<String, dynamic>? args]) async* {
+    await _ensureInitialized();
     if (!_isConnected) {
       throw ConvexException('Client not connected. Call connect() first.');
     }
