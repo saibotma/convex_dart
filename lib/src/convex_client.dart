@@ -7,42 +7,42 @@ import 'rust/frb_generated.dart';
 
 /// A Dart-idiomatic wrapper for the Convex client.
 class ConvexClient {
-  final rust.ConvexClientWrapper _client;
+  rust.ConvexClientWrapper? _client;
   bool _isConnected = false;
   static bool _isRustLibInitialized = false;
   static Completer<void>? _initCompleter;
 
-  ConvexClient._() : _client = rust.ConvexClientWrapper();
+  ConvexClient._();
 
   /// Creates a new ConvexClient instance.
   static ConvexClient create() {
     return ConvexClient._();
   }
 
-  /// Ensures RustLib is initialized before any operations
-  static Future<void> _ensureInitialized() async {
-    if (_isRustLibInitialized) {
+  /// Ensures RustLib is initialized and client is created
+  Future<void> _ensureInitialized() async {
+    if (_client != null) {
       return;
     }
 
-    _initCompleter ??= Completer<void>();
+    ConvexClient._initCompleter ??= Completer<void>();
 
-    if (!_initCompleter!.isCompleted) {
+    if (!ConvexClient._initCompleter!.isCompleted) {
       // First caller does the initialization
       try {
         await RustLib.init();
-        _isRustLibInitialized = true;
-        _initCompleter!.complete();
+        ConvexClient._isRustLibInitialized = true;
+        ConvexClient._initCompleter!.complete();
       } catch (e) {
         // Handle case where RustLib was already initialized by external code
         if (e.toString().contains('Should not initialize flutter_rust_bridge twice')) {
-          _isRustLibInitialized = true;
-          if (!_initCompleter!.isCompleted) {
-            _initCompleter!.complete();
+          ConvexClient._isRustLibInitialized = true;
+          if (!ConvexClient._initCompleter!.isCompleted) {
+            ConvexClient._initCompleter!.complete();
           }
         } else {
-          if (!_initCompleter!.isCompleted) {
-            _initCompleter!.completeError(e);
+          if (!ConvexClient._initCompleter!.isCompleted) {
+            ConvexClient._initCompleter!.completeError(e);
           }
           rethrow;
         }
@@ -50,14 +50,17 @@ class ConvexClient {
     }
 
     // Wait for initialization to complete (for concurrent callers)
-    await _initCompleter!.future;
+    await ConvexClient._initCompleter!.future;
+    
+    // Create the client after initialization
+    _client ??= rust.ConvexClientWrapper();
   }
 
   /// Connects to a Convex deployment.
   Future<void> connect(String deploymentUrl) async {
     await _ensureInitialized();
     try {
-      await _client.connect(deploymentUrl: deploymentUrl);
+      await _client!.connect(deploymentUrl: deploymentUrl);
       _isConnected = true;
     } on rust.ConvexError catch (e) {
       throw ConvexException(e.message);
@@ -77,7 +80,7 @@ class ConvexClient {
     final convexArgs = _convertArgsToConvexValues(args ?? {});
     
     try {
-      final result = await _client.mutation(
+      final result = await _client!.mutation(
         functionName: functionName,
         args: convexArgs,
       );
@@ -97,7 +100,7 @@ class ConvexClient {
     final convexArgs = _convertArgsToConvexValues(args ?? {});
     
     try {
-      final result = await _client.query(
+      final result = await _client!.query(
         functionName: functionName,
         args: convexArgs,
       );
@@ -117,7 +120,7 @@ class ConvexClient {
     final convexArgs = _convertArgsToConvexValues(args ?? {});
     
     try {
-      final subscription = await _client.subscribe(
+      final subscription = await _client!.subscribe(
         functionName: functionName,
         args: convexArgs,
       );
