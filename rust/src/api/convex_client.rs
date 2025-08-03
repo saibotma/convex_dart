@@ -10,42 +10,25 @@ pub struct ConvexClientWrapper {
 
 // Helper function to convert convex::Value to our ConvexValue enum
 fn convert_value(value: Value) -> ConvexValue {
-    let debug_str = format!("{:?}", value);
-    
-    if debug_str == "Null" {
-        return ConvexValue::Null;
+    match value {
+        Value::Null => ConvexValue::Null,
+        Value::Boolean(b) => ConvexValue::String(b.to_string()), // Store boolean as string since we don't have Bool variant
+        Value::String(s) => ConvexValue::String(s),
+        Value::Int64(i) => ConvexValue::Int64(i),
+        Value::Float64(f) => ConvexValue::Float64(f),
+        Value::Array(arr) => {
+            let converted_arr: Vec<ConvexValue> = arr.into_iter().map(convert_value).collect();
+            ConvexValue::Array(converted_arr)
+        },
+        Value::Object(obj) => {
+            let mut converted_obj = std::collections::HashMap::new();
+            for (key, val) in obj {
+                converted_obj.insert(key, convert_value(val));
+            }
+            ConvexValue::Object(converted_obj)
+        },
+        Value::Bytes(bytes) => ConvexValue::Bytes(bytes),
     }
-    
-    if let Some(str_val) = debug_str.strip_prefix("String(\"").and_then(|s| s.strip_suffix("\")")) {
-        return ConvexValue::String(str_val.to_string());
-    }
-    
-    if let Some(int_str) = debug_str.strip_prefix("Int64(").and_then(|s| s.strip_suffix(")")) {
-        if let Ok(int_val) = int_str.parse::<i64>() {
-            return ConvexValue::Int64(int_val);
-        }
-    }
-    
-    if let Some(float_str) = debug_str.strip_prefix("Float64(").and_then(|s| s.strip_suffix(")")) {
-        if let Ok(float_val) = float_str.parse::<f64>() {
-            return ConvexValue::Float64(float_val);
-        }
-    }
-    
-    // For now, handle arrays and objects as simplified cases
-    // A full implementation would need recursive parsing of the debug string
-    if debug_str.starts_with("Array([") && debug_str.ends_with("])") {
-        // For complex nested structures, we'd need proper parsing
-        // For now, return empty array
-        return ConvexValue::Array(vec![]);
-    }
-    
-    if debug_str.starts_with("Object({") && debug_str.ends_with("})") {
-        return ConvexValue::Object(std::collections::HashMap::new());
-    }
-    
-    // Fallback: treat as string
-    ConvexValue::String(debug_str)
 }
 
 #[derive(Debug, Clone)]
