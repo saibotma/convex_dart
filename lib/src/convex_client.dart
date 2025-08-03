@@ -81,40 +81,27 @@ class ConvexClient {
         args: convexArgs,
       );
 
-      final controller = StreamController<T>();
-      
-      // Start listening to the subscription in the background
-      _listenToSubscription<T>(subscription, controller);
-      
-      yield* controller.stream;
+      yield* _createReactiveStream<T>(subscription);
     } on rust.ConvexError catch (e) {
       throw ConvexException(e.message);
     }
   }
 
-  void _listenToSubscription<T>(
-    rust_sub.ConvexSubscription subscription,
-    StreamController<T> controller,
-  ) {
-    Timer.periodic(const Duration(milliseconds: 100), (timer) async {
-      try {
+  Stream<T> _createReactiveStream<T>(rust_sub.ConvexSubscription subscription) async* {
+    try {
+      while (true) {
         final next = await subscription.next();
         if (next == null) {
-          // Subscription ended
-          timer.cancel();
-          await controller.close();
-          return;
+          // Subscription ended naturally
+          break;
         }
-
-        final result = _parseResult<T>(next);
-        controller.add(result);
         
-      } catch (e) {
-        timer.cancel();
-        controller.addError(ConvexException('Subscription error: $e'));
-        await controller.close();
+        final result = _parseResult<T>(next);
+        yield result;
       }
-    });
+    } catch (e) {
+      throw ConvexException('Subscription error: $e');
+    }
   }
 
   List<(String, rust.ConvexValue)> _convertArgsToConvexValues(Map<String, dynamic> args) {
